@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Stage GUI</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Stage Instructions</h1>
+
+    <nav aria-label="Modes">
+      <button class="tab-btn active" data-tab="single" id="tab-single" role="tab" aria-selected="true">Single Instruction Mode</button>
+      <button class="tab-btn" data-tab="arrows" id="tab-arrows" role="tab" aria-selected="false">Continuous Instructions</button>
+    </nav>
+
+    <section id="panel-single" class="panel active" role="tabpanel" aria-labelledby="tab-single">
+      <h3>Single Command</h3>
+      <div class="row">
+        <label for="direction">Direction:</label>
+        <select name="direction" id="singleDirection">
+          <option value="UP">UP</option>
+          <option value="DOWN">DOWN</option>
+          <option value="LEFT">LEFT</option>
+          <option value="RIGHT">RIGHT</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label for="singleDistance">Distance:</label>
+        <input id="singleDistance" type="number" step="1" min="0" placeholder="10" />
+        <button id="queueBtn">Apply Step</button>
+      </div>
+
+      <div class="row">
+        <div>Last Command</div>
+        <div id="lastDir" class="badge">—</div>
+        <div id="lastDist" class="badge">—</div>
+      </div>
+    </section>
+
+    <section id="panel-arrows" class="panel" role="tabpanel" aria-labelledby="tab-arrows">
+      <h3>Continuous</h3>
+      <div class="row">
+        <label for="step">Step Size:</label>
+        <input id="step" type="number" step="1" min="0" placeholder="5" />
+        <button id="applyStep">Apply Step</button>
+      </div>
+
+      <div class="row">
+        <div>Direction</div>
+        <div id="contDir" class="badge">—</div>
+        <div>Step</div>
+        <div id="contBadge" class="badge">—</div>
+      </div>
+    </section>
+
+    <h2>Event Log</h2>
+    <pre id="log"></pre>
+  </div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
