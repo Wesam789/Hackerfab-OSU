@@ -2,20 +2,24 @@ const tabs = document.querySelectorAll('.tab-btn');
 const panels = {
   single: document.getElementById('panel-single'),
   arrows: document.getElementById('panel-arrows'),
+  auto1: document.getElementById('panel-auto1'),
 };
 
 const navList = [
   document.getElementById('tab-single'),
   document.getElementById('tab-arrows'),
-  document.getElementById('singleDirection'),
+  document.getElementById('tab-auto1'),
   document.getElementById('singleDistance'),
   document.getElementById('queueBtn'),
   document.getElementById('step'),
   document.getElementById('applyStep'),
+  document.getElementById('start'),
+  document.getElementById('stop')
 ];
 
 let navIndex = 0;
 let navMode = false;  
+let mode = 'single';
 
 function updateFocus() {
   const element = navList[navIndex];
@@ -23,12 +27,17 @@ function updateFocus() {
   element.focus();
 }
 
-let mode = 'single';
+function append(line){
+  const logBox = document.getElementById('log');
+  logBox.textContent += line + "\n";
+  logBox.scrollTop = logBox.scrollHeight;
+}
 
 tabs.forEach(btn => {
   btn.addEventListener('click', () => {
     mode = btn.dataset.tab;                    
     tabs.forEach(b => b.classList.toggle('active', b === btn));
+
     Object.entries(panels).forEach(([name, el]) =>
       el.classList.toggle('active', name === mode)
     );
@@ -36,43 +45,98 @@ tabs.forEach(btn => {
   });
 });
 
+const camBox  = document.getElementById('camBox');
+
 // single steps 
-const singleDirection = document.getElementById('singleDirection');
 const singleDistance  = document.getElementById('singleDistance');
 const lastDir         = document.getElementById('lastDir');
 const lastDist        = document.getElementById('lastDist');
+const dirButtons = document.querySelectorAll('.dir-btn');
+let currentDir = 'UP';
+
+function setDirection(dir) {
+  currentDir = dir
+  dirButtons.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.dir === dir);
+  });
+  lastDir.textContent = dir;
+}
+
+dirButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const dir = btn.dataset.dir;
+    setDirection(dir);
+    append(`Dir selected: ${dir}`);
+  });
+});
 
 // continous steps
-const stepInput    = document.getElementById('step');
-const contDir         = document.getElementById('contDir');
-const contBadge        = document.getElementById('contBadge');
+const stepInput = document.getElementById('step');
+const contDir = document.getElementById('contDir');
+const contBadge = document.getElementById('contBadge');
+const logBox  = document.getElementById('log');
+const startBtn = document.getElementById('start');
+const stopBtn  = document.getElementById('stop');
+const coordX   = document.getElementById('coordX');
+const coordY   = document.getElementById('coordY');
 
-const logBox          = document.getElementById('log');
+// auto mode event listeners
+startBtn.addEventListener('click', async () => {
+  append('Auto sequence starting');
+  // disable start and enable stop
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  await postJSON('/auto-control', { command: 'START' });
+});
 
-function append(line){
-  logBox.textContent += line + "\n";
-  logBox.scrollTop = logBox.scrollHeight;
-}
+stopBtn.addEventListener('click', async () => {
+  append('Auto sequence stopping');
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  await postJSON('/auto-control', { command: 'STOP' });
+});
 
 // websocket backend
 let ws;
-try {
-  ws = new WebSocket(`ws://${location.host}/ws`);
-  ws.onopen = () => append('WS connected');
-  ws.onmessage = (e) => {
-    try {
-      const m = JSON.parse(e.data || '{}');
-      append(`[WS msg] ${JSON.stringify(m)}`);
-      if (m.type === 'key' && m.token) handleKeyToken(m.token, m.pressed);
+
+function connectWS() {
+  try {
+    ws = new WebSocket(`ws://${location.host}/ws`);
+    ws.onopen = () => append('WS connected');
+    ws.onmessage = (e) => {
+      try {
+        const m = JSON.parse(e.data || '{}');
+        append(`[WS msg] ${JSON.stringify(m)}`);
+
+        if (m.type === 'key' && m.token) {
+              handleKeyToken(m.token, m.pressed);
+        }
+      
+        if (m.type === 'coords') {
+                coordX.textContent = m.x.toFixed(2);
+                coordY.textContent = m.y.toFixed(2);
+        }
+
+        // Handle Status Messages
+        if (m.type === 'status') {
+            append(`STATUS ${m.msg}`);
+        }
+      
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    ws.onerror = () => append('WS error');
+    ws.onclose = () => {
+          append('WS closed');
+          setTimeout(connectWS, 3000);
+    };
     } catch (err) {
-      append(`WS parse error: ${err}`);
+        append('WS not available');
     }
-  };
-  ws.onerror = () => append('WS error');
-  ws.onclose = () => append('WS closed');
-} catch {
-  append('WS not available');
-}
+  }
+
+connectWS();
 
 // REST helpers 
 async function postJSON(url, body){
@@ -91,18 +155,24 @@ async function postJSON(url, body){
 
 //queue single comman and apply step
 document.getElementById('queueBtn').addEventListener('click', async () => {
-  const dir  = singleDirection.value;                  // UP,DOWN,LEFT,RIGHT
+  const dir  = currentDir;                  // UP,DOWN,LEFT,RIGHT
   const dist = +(singleDistance.value || 0);
-  if (!dir || !Number.isFinite(dist)) return;
+  if (!dir || !Number.isFinite(dist) || dist <= 0) {
+    append('Distance must be > 0');
+    return;
+  }
 
   lastDir.textContent  = dir;
   lastDist.textContent = String(dist);
   append(`Queued: ${dir} ${dist}`);
 
-  const axis = (dir === 'LEFT' || dir === 'RIGHT') ? 'X' : 'Y';
+  const axis = (dir === 'LEFT' || dir === 'RIGHT') ? 'x' : 'y';
   const signed = (dir === 'UP' || dir === 'RIGHT') ? dist : -dist;
 
-  await postJSON('/apply-step', { axis, dist: signed });
+  const res = await postJSON('/apply-step', { axis, dist: signed });
+
+  append(`Server: ${JSON.stringify(res)}`);
+
 });
 
 // apply step for continuous mode
@@ -158,9 +228,20 @@ function handleKeyToken(token, pressed){
     return;
   }
 
+  // auto tab node
+  if (mode === 'auto1') {
+    // map keypad to start/stop buttons
+    if (token === "ENTER") {
+        startBtn.click();
+    } else if (token === "BACKSPACE" || token === "0") {
+        stopBtn.click();
+    }
+    return;
+  }
+
   if (mode === 'single') {
     if (["UP","DOWN","LEFT","RIGHT"].includes(token)) {
-      lastDir.textContent = token;
+      setDirection(token);
       append(`Dir selected: ${token}`);
     } else if (/^\d$/.test(token)) {
       singleDistance.value = (singleDistance.value || '') + token;

@@ -12,18 +12,37 @@
     <nav aria-label="Modes">
       <button class="tab-btn active" data-tab="single" id="tab-single" role="tab" aria-selected="true">Single Instruction Mode</button>
       <button class="tab-btn" data-tab="arrows" id="tab-arrows" role="tab" aria-selected="false">Continuous Instructions</button>
+      <button class="tab-btn" data-tab="auto1" id="tab-auto1" role="tab" aria-selected="false">Automatic</button>
     </nav>
+
+
+   <section id="panel-auto1" class="panel" role="tabpanel" aria-labelledby="tab-auto1">
+      <h3>Auto Mode</h3>
+      <div class="row">
+        <button id="start" class="btn-success">Start</button>
+        <button id="stop" class="btn-danger" disabled>Stop</button>
+      </div>
+      <div class="coords">
+        <div>X</div>
+        <div id="coordX" class="badge">0.00</div>
+        <div>Y</div>
+        <div id="coordY" class="badge">0.00</div>
+      </div>
+      <div class="video-container">
+        <img src="http://192.168.1.100:5000/video_feed" alt="Camera Feed/Server IP" width="640" height="480">
+      </div>
+    </section>
 
     <section id="panel-single" class="panel active" role="tabpanel" aria-labelledby="tab-single">
       <h3>Single Command</h3>
       <div class="row">
-        <label for="direction">Direction:</label>
-        <select name="direction" id="singleDirection">
-          <option value="UP">UP</option>
-          <option value="DOWN">DOWN</option>
-          <option value="LEFT">LEFT</option>
-          <option value="RIGHT">RIGHT</option>
-        </select>
+        <span for="direction">Direction:</span>
+        <div class="dir-group">
+          <button class="dir-btn active" data-dir="UP">UP</button>
+          <button class="dir-btn" data-dir="DOWN">DOWN</button>
+          <button class="dir-btn" data-dir="LEFT">LEFT</button>
+          <button class="dir-btn" data-dir="RIGHT">RIGHT</button>
+        </div>
       </div>
 
       <div class="row">

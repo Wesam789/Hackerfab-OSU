@@ -146,6 +146,39 @@ input[type="number"]:focus, select:focus, button:focus {
   margin-top: 16px;
 }
 
+.dir-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dir-btn {
+  border: 1px solid #a7b1b7;
+  background: #ffffff;
+  color: #222;
+  padding: 6px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  min-width: 70px;
+  transition: background .15s ease, border-color .15s ease, transform .03s ease;
+}
+
+.dir-btn:hover {
+  border-color: #8e99a0;
+}
+
+.dir-btn:active {
+  transform: translateY(1px);
+}
+
+.dir-btn.active {
+  background: #ba0c2f;
+  border-color: #ba0c2f;
+  color: #ffffff;
+}
+
+
 @media (max-width: 540px) {
   input[type="number"], select { min-width: 100px; }
   .badge { min-width: 88px; }
