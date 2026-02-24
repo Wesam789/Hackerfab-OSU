@@ -10,5 +10,6 @@ motion = {
     "direction": 1,
     "axis": "x",
     "position": 0.0,
-    "active": False
+    "active": False,
+    "absoluteTarget": 0.0
 }

@@ -11,7 +11,7 @@ freq = 500        # wave frequency
 amplitude = 0.9
 phase = 0.0
 
-steps_per_cycle = 0.005 # PLACEHOLDER
+steps_per_cycle = 5 # PLACEHOLDER
 
 def load_next_step():
     # load next step from queue into active motion state
@@ -27,11 +27,11 @@ def load_next_step():
         motion["active"] = True
         print(f"[Motion] Starting job: {step}")
 
+        print(f"Loaded step: {motion['axis']} {motion['targetSteps']} dir={motion['direction']}")
+
+
 def audio_callback(outdata, frames, time_info, status):
     global phase
-
-    if status:
-        print("Status:", status)
 
     load_next_step()
 
@@ -52,18 +52,21 @@ def audio_callback(outdata, frames, time_info, status):
     t = n / sr
 
     # sawtooth wave
-    raw_wave = amplitude * signal.sawtooth(2 * np.pi * freq * t, width=direction).astype(np.float32)
+    raw_wave = signal.sawtooth(2 * np.pi * freq * t).astype(np.float32)
     # ensures wave is not negative
-    x = (raw_wave + 1.0) * 0.5
+    x = (raw_wave + 1.0) / 2.0
     # final wave
-    x *= amplitude
+    x *= amplitude * raw_wave
 
+    if direction < 0:
+        x = amplitude - x
+    
     cycles = freq * frames / sr
     steps_generated = cycles * steps_per_cycle
    
     # stop condition
     with motion_lock:
-        remaining = motion["targetSteps"] - motion["currentSteps"]
+        remaining = max(0.0, motion["targetSteps"] - motion["currentSteps"])
         actual_steps = min(steps_generated, remaining)
 
         motion["currentSteps"] += actual_steps
@@ -71,7 +74,7 @@ def audio_callback(outdata, frames, time_info, status):
 
         if motion["currentSteps"] >= motion["targetSteps"]:
             motion["active"] = False
-            print("Motion complete")
+            motion["currentSteps"] = motion["targetSteps"]
 
     outdata[:] = 0.0
     if current_axis.lower() == "x":
@@ -89,6 +92,7 @@ def audio_stream_start():
             samplerate=sr,
             channels=2,
             dtype='float32',
+            blocksize=256,
             callback=audio_callback
         )
         stream.start()

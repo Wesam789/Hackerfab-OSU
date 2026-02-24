@@ -7,12 +7,9 @@ import time
 sd.default.device = 0
 
 sr = 48000        # sample rate 
-freq = 500        # wave frequency 
+freq = 350        # wave frequency 
 amplitude = 0.9
 phase = 0.0
-
-steps_per_cycle = 0.01 # CHANGE
-
 
 def audio_callback(outdata, frames, time_info, status):
     global phase

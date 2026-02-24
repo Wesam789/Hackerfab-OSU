@@ -9,6 +9,10 @@ const navList = [
   document.getElementById('tab-single'),
   document.getElementById('tab-arrows'),
   document.getElementById('tab-auto1'),
+  document.getElementById('dir-up'),
+  document.getElementById('dir-down'),
+  document.getElementById('dir-left'),
+  document.getElementById('dir-right'),
   document.getElementById('singleDistance'),
   document.getElementById('queueBtn'),
   document.getElementById('step'),
@@ -98,6 +102,8 @@ stopBtn.addEventListener('click', async () => {
 
 // websocket backend
 let ws;
+// handle status Messages
+let lastStatus = null;
 
 function connectWS() {
   try {
@@ -106,26 +112,37 @@ function connectWS() {
     ws.onmessage = (e) => {
       try {
         const m = JSON.parse(e.data || '{}');
-        append(`[WS msg] ${JSON.stringify(m)}`);
 
-        if (m.type === 'key' && m.token) {
-              handleKeyToken(m.token, m.pressed);
-        }
-      
-        if (m.type === 'coords') {
-                coordX.textContent = m.x.toFixed(2);
-                coordY.textContent = m.y.toFixed(2);
-        }
+      if (m.type === 'status') {
+        const newStatus = `${m.pos}-${m.active}-${m.queue}`;
 
-        // Handle Status Messages
-        if (m.type === 'status') {
-            append(`STATUS ${m.msg}`);
+        if (newStatus !== lastStatus) {
+          lastStatus = newStatus;
         }
-      
-      } catch (err) {
-        console.error(err);
+        return; // dont log
       }
-    };
+
+      // handle coordinates
+      if (m.type === 'coords') {
+        coordX.textContent = m.x.toFixed(2);
+        coordY.textContent = m.y.toFixed(2);
+        return;
+      }
+
+      // Handle keypad tokens
+      if (m.type === 'key' && m.token) {
+        handleKeyToken(m.token, m.pressed);
+        return;
+      }
+
+      // Log anything else
+      append(`[WS msg] ${JSON.stringify(m)}`);
+
+    } catch (err) {
+      console.error("WS message error:", err);
+    }
+};
+
     ws.onerror = () => append('WS error');
     ws.onclose = () => {
           append('WS closed');

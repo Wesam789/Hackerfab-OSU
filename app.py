@@ -61,13 +61,24 @@ def apply_step():
     dist = float(data.get("dist", 0))  # steps
     axis = data.get("axis", "x").lower()
 
+    print("Received command:", axis, dist)
+
+    if axis not in ("x", "y"):
+        return jsonify(ok=False, error="Invalid axis")
+    
+    if dist == 0:
+        return jsonify(ok=False, error="Zero move, ignored")
+
+    if not isinstance(dist, (int, float)):
+        return jsonify(ok=False, error="Invalid distance")
+    
     with motion_lock:
         motion_queue.append({
             "steps": abs(dist),
-            "direction": 1 if dist >= 0 else -1,
+            "direction": 1 if dist > 0 else -1,
             "axis": axis
         })
-
+        
     return jsonify(ok=True)
 
 @app.get("/status")
@@ -77,6 +88,19 @@ def status():
             "position": motion["position"],
             "moving": motion["active"]
         })
+
+@app.post("/auto-control")
+def auto_control():
+    data = request.get_json() or {}
+    cmd = data.get("command")
+
+    if cmd == "START":
+        print("Auto START")
+    elif cmd == "STOP":
+        print("Auto STOP")
+
+    return jsonify(ok=True)
+
 
 # read keypad inputs and send to browsers
 def keypad_thread():
