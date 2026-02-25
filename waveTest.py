@@ -1,23 +1,22 @@
 import numpy as np
 from scipy import signal
 import sounddevice as sd
-import math
 import time
 
 sd.default.device = 0
 
 sr = 48000        # sample rate 
-freq = 350         # wave frequency 
+freq = 275         # wave frequency 
 amplitude = 0.9
 phase = 0.0
 
 def send_wave(direction):
     if direction==1:
-        print("Running 5s test in positive direction")
+        print("Running test in positive direction")
     elif direction==-1:
-        print("Running 5s test in negative direction")
+        print("Running test in negative direction")
 
-    duration = 5
+    duration = 10
     t = np.arange(0, duration, 1/sr)
 
     # sawtooth

@@ -58,7 +58,7 @@ def index():
 @app.post("/apply-step")
 def apply_step():
     data = request.get_json() or {}
-    dist = float(data.get("dist", 0))  # steps
+    dist = float(data.get("dist", 0))  # motion steps
     axis = data.get("axis", "x").lower()
 
     print("Received command:", axis, dist)

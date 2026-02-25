@@ -7,11 +7,21 @@ from motion import motion, motion_lock, motion_queue
 sd.default.device = 0
 
 sr = 48000        # sample rate 
-freq = 500        # wave frequency 
+freq = 275        # wave frequency 
 amplitude = 0.9
 phase = 0.0
 
 steps_per_cycle = 5 # PLACEHOLDER
+# TEST FREQ * steps per cycle
+#TEST 1375 first
+
+#  calibration
+steps_per_second = freq * steps_per_cycle
+
+print("motion calibration")
+print("Frequency:", freq)
+print("Steps per cycle:", steps_per_cycle)
+print("Steps per second:", steps_per_second)
 
 def load_next_step():
     # load next step from queue into active motion state
@@ -56,13 +66,12 @@ def audio_callback(outdata, frames, time_info, status):
     # ensures wave is not negative
     x = (raw_wave + 1.0) / 2.0
     # final wave
-    x *= amplitude * raw_wave
+    x *= amplitude
 
     if direction < 0:
         x = amplitude - x
     
-    cycles = freq * frames / sr
-    steps_generated = cycles * steps_per_cycle
+    steps_generated = steps_per_second * (frames / sr)
    
     # stop condition
     with motion_lock:

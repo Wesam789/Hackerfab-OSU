@@ -7,7 +7,7 @@ import time
 sd.default.device = 0
 
 sr = 48000        # sample rate 
-freq = 350        # wave frequency 
+freq = 275        # wave frequency 
 amplitude = 0.9
 phase = 0.0
 
@@ -21,6 +21,7 @@ def audio_callback(outdata, frames, time_info, status):
 
     # sawtooth wave
     x = amplitude * signal.sawtooth(2 * np.pi * freq * t)
+   # x*=-1
 
     # output left and right channels
     outdata[:] = np.column_stack((x, -x)).astype(np.float32)
@@ -45,6 +46,5 @@ except KeyboardInterrupt:
 # clear DAC output
 sd.play(np.zeros((1024, 2), dtype=np.float32), sr)
 sd.stop()
-sd.reset()
 print("DAC output cleared")
 
