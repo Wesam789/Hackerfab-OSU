@@ -6,7 +6,7 @@ import time
 sd.default.device = 0
 
 sr = 48000        # sample rate 
-freq = 275         # wave frequency 
+freq = 40         # wave frequency 
 amplitude = 0.9
 phase = 0.0
 
@@ -16,7 +16,7 @@ def send_wave(direction):
     elif direction==-1:
         print("Running test in negative direction")
 
-    duration = 10
+    duration = 5
     t = np.arange(0, duration, 1/sr)
 
     # sawtooth

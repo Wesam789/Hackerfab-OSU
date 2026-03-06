@@ -7,13 +7,11 @@ from motion import motion, motion_lock, motion_queue
 sd.default.device = 0
 
 sr = 48000        # sample rate 
-freq = 275        # wave frequency 
+freq = 200        # wave frequency 
 amplitude = 0.9
 phase = 0.0
 
-steps_per_cycle = 5 # PLACEHOLDER
-# TEST FREQ * steps per cycle
-#TEST 1375 first
+steps_per_cycle = 1
 
 #  calibration
 steps_per_second = freq * steps_per_cycle
@@ -35,7 +33,7 @@ def load_next_step():
         motion["direction"] = step["direction"]
         motion["axis"] = step["axis"]
         motion["active"] = True
-        print(f"[Motion] Starting job: {step}")
+        print(f"Starting job: {step}")
 
         print(f"Loaded step: {motion['axis']} {motion['targetSteps']} dir={motion['direction']}")
 
@@ -62,14 +60,9 @@ def audio_callback(outdata, frames, time_info, status):
     t = n / sr
 
     # sawtooth wave
-    raw_wave = signal.sawtooth(2 * np.pi * freq * t).astype(np.float32)
-    # ensures wave is not negative
-    x = (raw_wave + 1.0) / 2.0
+    wave = amplitude * signal.sawtooth(2 * np.pi * freq * t)
     # final wave
-    x *= amplitude
-
-    if direction < 0:
-        x = amplitude - x
+    wave *= direction
     
     steps_generated = steps_per_second * (frames / sr)
    
@@ -87,9 +80,9 @@ def audio_callback(outdata, frames, time_info, status):
 
     outdata[:] = 0.0
     if current_axis.lower() == "x":
-        outdata[:, 0] = x   # left channel
+        outdata[:, 0] = wave.astype(np.float32)   # left channel
     else:
-        outdata[:, 1] = x   # right channel
+        outdata[:, 1] = wave.astype(np.float32)   # right channel
 
     phase = (phase + frames) % sr
 

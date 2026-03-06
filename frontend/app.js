@@ -184,9 +184,9 @@ document.getElementById('queueBtn').addEventListener('click', async () => {
   append(`Queued: ${dir} ${dist}`);
 
   const axis = (dir === 'LEFT' || dir === 'RIGHT') ? 'x' : 'y';
-  const signed = (dir === 'UP' || dir === 'RIGHT') ? dist : -dist;
+  const dirSign = (dir === 'UP' || dir === 'RIGHT') ? 1 : -1;
 
-  const res = await postJSON('/apply-step', { axis, dist: signed });
+  const res = await postJSON('/apply-step', { axis, dist: dist, dirSign: dirSign });
 
   append(`Server: ${JSON.stringify(res)}`);
 
@@ -277,8 +277,8 @@ function handleKeyToken(token, pressed){
       append(`Jog ${token} by ${stepVal}`);
       if (stepVal > 0) {
         const axis = (token === 'LEFT' || token === 'RIGHT') ? 'X' : 'Y';
-        const signed = (token === 'UP' || token === 'RIGHT') ? stepVal : -stepVal;
-        postJSON('/apply-step', { axis, dist: signed });
+        const dirSign = (token === 'UP' || token === 'RIGHT') ? 1 : -1;
+        postJSON('/apply-step', { axis: axis, dist: stepVal, dirSign: dirSign });
       }
     } else if (/^\d$/.test(token)) {
       stepInput.value = (stepInput.value || '') + token;

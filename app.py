@@ -60,6 +60,7 @@ def apply_step():
     data = request.get_json() or {}
     dist = float(data.get("dist", 0))  # motion steps
     axis = data.get("axis", "x").lower()
+    dirSign = data.get("dirSign", 1)
 
     print("Received command:", axis, dist)
 
@@ -74,8 +75,8 @@ def apply_step():
     
     with motion_lock:
         motion_queue.append({
-            "steps": abs(dist),
-            "direction": 1 if dist > 0 else -1,
+            "steps": abs(dist) * 200,  # scaled up
+            "direction": 1 if dirSign > 0 else -1,
             "axis": axis
         })
         
