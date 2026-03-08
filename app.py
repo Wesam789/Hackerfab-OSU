@@ -90,6 +90,16 @@ def status():
             "moving": motion["active"]
         })
 
+@app.post("/stop-motion")
+def stop_motion():
+    print("Stopping motion")
+    with motion_lock:
+        motion_queue.clear()         # clear pending steps
+        motion["active"] = False 
+        motion["targetSteps"] = motion["currentSteps"] 
+        
+    return jsonify(ok=True)
+
 @app.post("/auto-control")
 def auto_control():
     data = request.get_json() or {}

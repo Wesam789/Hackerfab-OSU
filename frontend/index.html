@@ -10,7 +10,7 @@
     <h1>Stage Instructions</h1>
 
     <nav aria-label="Modes">
-      <button class="tab-btn active" data-tab="single" id="tab-single" role="tab" aria-selected="true">Single Instruction Mode</button>
+      <button class="tab-btn active" data-tab="single" id="tab-single" role="tab" aria-selected="true">Single Instruction</button>
       <button class="tab-btn" data-tab="arrows" id="tab-arrows" role="tab" aria-selected="false">Continuous Instructions</button>
       <button class="tab-btn" data-tab="auto1" id="tab-auto1" role="tab" aria-selected="false">Automatic</button>
     </nav>
@@ -59,13 +59,7 @@
     </section>
 
     <section id="panel-arrows" class="panel" role="tabpanel" aria-labelledby="tab-arrows">
-      <h3>Continuous</h3>
-      <div class="row">
-        <label for="step">Step Size:</label>
-        <input id="step" type="number" step="1" min="0" placeholder="5" />
-        <button id="applyStep">Apply Step</button>
-      </div>
-
+      <h3>Joystick Mode</h3>
       <div class="row">
         <div>Direction</div>
         <div id="contDir" class="badge">—</div>

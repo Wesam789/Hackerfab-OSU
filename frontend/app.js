@@ -203,61 +203,55 @@ document.getElementById('applyStep').addEventListener('click', () => {
   append(`Jog step set: ${v}`);
 });
 
-function handleKeyToken(token, pressed){
-  // act on keydown only
-  if (!pressed) return;
+function handleKeyToken(token, pressed) {
+  const isDown = (pressed === true || String(pressed).toLowerCase() === "true" || pressed === 1);
+  const dirMap = { "8": "UP", "2": "DOWN", "4": "LEFT", "6": "RIGHT", "UP": "UP", "DOWN": "DOWN", "LEFT": "LEFT", "RIGHT": "RIGHT" };
+  const joyDir = dirMap[token];
 
-  // Toggle nav mode with NUM key
+  if (!isDown) {
+    if (mode === 'arrows' && joyDir) {
+      contDir.textContent = "—";
+      append(`Joystick stopped`);
+      postJSON('/stop-motion');
+    }
+    return; 
+  }
+
+  // toggle navigation Mode
   if (token === "NUM") {
     navMode = !navMode;
     append(navMode ? "[nav] ON" : "[nav] OFF");
-    if (navMode) {
-      updateFocus();
-    }
+    if (navMode) updateFocus();
     return;
   }
 
-  // If we're in nav mode, arrows move focus, ENTER clicks
   if (navMode) {
-    const numArrowMap = { "8": "UP", "2": "DOWN", "4": "LEFT", "6": "RIGHT" };
-    const dir = numArrowMap[token];
-
-    if (dir === "RIGHT" || dir === "DOWN") {
+    if (joyDir === "RIGHT" || joyDir === "DOWN") {
       navIndex = (navIndex + 1) % navList.length;
       updateFocus();
       return;
     }
-    if (dir === "LEFT" || dir === "UP") {
+    if (joyDir === "LEFT" || joyDir === "UP") {
       navIndex = (navIndex - 1 + navList.length) % navList.length;
       updateFocus();
       return;
     }
-
     if (token === "ENTER") {
       const el = navList[navIndex];
-      if (el && typeof el.click === "function") {
-        el.click();
-      }
-      return;
+      if (el && typeof el.click === "function") el.click();
     }
-
-    // ignore all other tokens while in navMode
-    return;
+    return; 
   }
 
-  // auto tab node
+  // state control modes
   if (mode === 'auto1') {
-    // map keypad to start/stop buttons
-    if (token === "ENTER") {
-        startBtn.click();
-    } else if (token === "BACKSPACE" || token === "0") {
-        stopBtn.click();
-    }
+    if (token === "ENTER") startBtn.click();
+    else if (token === "BACKSPACE" || token === "0") stopBtn.click();
     return;
   }
 
   if (mode === 'single') {
-    if (["UP","DOWN","LEFT","RIGHT"].includes(token)) {
+    if (["UP", "DOWN", "LEFT", "RIGHT"].includes(token)) {
       setDirection(token);
       append(`Dir selected: ${token}`);
     } else if (/^\d$/.test(token)) {
@@ -271,27 +265,20 @@ function handleKeyToken(token, pressed){
   }
 
   if (mode === 'arrows') {
-    if (["UP","DOWN","LEFT","RIGHT"].includes(token)) {
-      contDir.textContent = token;
-      const stepVal = +(contBadge.textContent || 0);
-      append(`Jog ${token} by ${stepVal}`);
-      if (stepVal > 0) {
-        const axis = (token === 'LEFT' || token === 'RIGHT') ? 'X' : 'Y';
-        const dirSign = (token === 'UP' || token === 'RIGHT') ? 1 : -1;
-        postJSON('/apply-step', { axis: axis, dist: stepVal, dirSign: dirSign });
-      }
-    } else if (/^\d$/.test(token)) {
-      stepInput.value = (stepInput.value || '') + token;
-      append(`Step buffer: ${stepInput.value}`);
-    } else if (token === "BACKSPACE") {
-      stepInput.value = (stepInput.value || '').slice(0, -1);
-    } else if (token === "ENTER") {
-      document.getElementById('applyStep').click();
+    if (joyDir) {
+      contDir.textContent = joyDir;
+      append(`Joystick moving: ${joyDir}`);
+      const axis = (joyDir === 'LEFT' || joyDir === 'RIGHT') ? 'x' : 'y';
+      const dirSign = (joyDir === 'UP' || joyDir === 'RIGHT') ? 1 : -1;
+      postJSON('/apply-step', { axis: axis, dist: 9999, dirSign: dirSign });
     }
+    return;
   }
 }
 
-
-
-  
-
+// block browser from moving tabs
+window.addEventListener('keydown', function(e) {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+    e.preventDefault();
+  }
+}, { passive: false });
