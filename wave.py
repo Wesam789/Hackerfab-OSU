@@ -33,8 +33,8 @@ def load_next_step():
         motion["direction"] = step["direction"]
         motion["axis"] = step["axis"]
         motion["active"] = True
-        print(f"Starting job: {step}")
 
+        print(f"Starting job: {step}")
         print(f"Loaded step: {motion['axis']} {motion['targetSteps']} dir={motion['direction']}")
 
 
@@ -53,6 +53,7 @@ def audio_callback(outdata, frames, time_info, status):
 
     if not active:
         outdata[:] = 0
+        phase = (phase + frames) % sr
         return
 
     # time vector   

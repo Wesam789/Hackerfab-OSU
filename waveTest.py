@@ -16,7 +16,7 @@ def send_wave(direction):
     elif direction==-1:
         print("Running test in negative direction")
 
-    duration = 5
+    duration = 10
     t = np.arange(0, duration, 1/sr)
 
     # sawtooth
