@@ -1,9 +1,11 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, Response
 from flask_sock import Sock
 import threading, json, time, os, atexit
 from keypad import KeypadReader
 from motion import motion, motion_lock, motion_queue
 from wave import audio_stream_start, audio_stream_stop
+from camera import FLIRCamera
+import RPi.GPIO as GPIO
 
 app = Flask(__name__, static_folder="frontend", static_url_path="")
 sock = Sock(app)
@@ -12,6 +14,29 @@ sock = Sock(app)
 clients = set()
 clients_lock = threading.Lock()
 audio_stream = None
+
+
+
+# --- NEW GPIO LOGIC ---
+def gpio_heartbeat():
+    print("[GPIO] Pins 26 and 16 initialized")
+    GPIO.setwarnings(False)
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(26, GPIO.OUT)
+    GPIO.setup(16, GPIO.OUT)
+    
+    try:
+        while True:
+            # Keep 26 HIGH always
+            GPIO.output(26, GPIO.HIGH)
+            
+            # Blink 16 or keep it HIGH (matching your logic)
+            GPIO.output(16, GPIO.HIGH)
+            time.sleep(1)
+            GPIO.output(16, GPIO.LOW)
+            time.sleep(1)
+    except Exception as e:
+        print(f"[GPIO] Error: {e}")
 
 # broadcasts data to clients
 def ws_broadcast(obj):
@@ -48,6 +73,27 @@ def ws(ws):
         # remove client
         with clients_lock:
             clients.discard(ws)
+
+flir_cam = None
+
+def stream_frames():
+    global flir_cam
+    if flir_cam is None:
+        try:
+            flir_cam = FLIRCamera()
+            flir_cam.start() # Ensure it starts
+        except Exception as e:
+            print(f"Camera Init Failed: {e}")
+            return
+
+    while True:
+        # get_frame now returns the actual JPEG byte string
+        frame = flir_cam.get_frame()
+        if frame:
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        else:
+            time.sleep(0.01)
 
 # serve html page
 @app.get("/")
@@ -112,6 +158,10 @@ def auto_control():
 
     return jsonify(ok=True)
 
+@app.route('/video_feed')
+def video_feed():
+    return Response(stream_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 # read keypad inputs and send to browsers
 def keypad_thread():
@@ -160,6 +210,9 @@ if __name__ == "__main__":
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         threading.Thread(target=keypad_thread, daemon=True).start()
         threading.Thread(target=status_thread, daemon=True).start()
+        threading.Thread(target=gpio_heartbeat, daemon=True).start()
         audio_stream = audio_stream_start()
+
+        
     # start web server
     app.run(host="0.0.0.0", port=8080, debug=True)
