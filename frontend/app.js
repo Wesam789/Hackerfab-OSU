@@ -208,6 +208,12 @@ function handleKeyToken(token, pressed) {
   const dirMap = { "8": "UP", "2": "DOWN", "4": "LEFT", "6": "RIGHT", "UP": "UP", "DOWN": "DOWN", "LEFT": "LEFT", "RIGHT": "RIGHT" };
   const joyDir = dirMap[token];
 
+  // # CHANGE BUTTON
+  // if (token === "*") {
+  //   postJSON('/toggle-cam', { active: isDown });
+  //   return; 
+  // }
+
   if (!isDown) {
     if (mode === 'arrows' && joyDir) {
       contDir.textContent = "—";

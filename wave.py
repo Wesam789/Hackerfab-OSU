@@ -9,17 +9,14 @@ sd.default.device = 0
 sr = 48000        # sample rate 
 freq = 200        # wave frequency 
 amplitude = 0.9
-phase = 0.0
+phase = 0
 
 steps_per_cycle = 1
 
-#  calibration
-steps_per_second = freq * steps_per_cycle
+t = np.arange(sr) / sr
 
-print("motion calibration")
-print("Frequency:", freq)
-print("Steps per cycle:", steps_per_cycle)
-print("Steps per second:", steps_per_second)
+wave_x = amplitude * signal.sawtooth(2 * np.pi * 200 * t).astype(np.float32)
+wave_y = amplitude * signal.sawtooth(2 * np.pi * 40 * t).astype(np.float32)
 
 def load_next_step():
     # load next step from queue into active motion state
@@ -56,16 +53,30 @@ def audio_callback(outdata, frames, time_info, status):
         phase = (phase + frames) % sr
         return
 
-    # time vector   
-    n = np.arange(frames) + phase
-    t = n / sr
+    if current_axis == "x":
+        wave_full = wave_x
+        current_freq = 200
+    elif current_axis == "y":
+        wave_full = wave_y
+        current_freq = 40
 
-    # sawtooth wave
-    wave = amplitude * signal.sawtooth(2 * np.pi * freq * t)
+    end_phase = phase + frames
+    if end_phase <= sr:
+        wave = wave_full[phase:end_phase]
+    else:
+        wave = np.concatenate((
+            wave_full[phase:sr],
+            wave_full[0:(end_phase % sr)]
+        ))
+
+    if len(wave) != frames:
+        wave = wave[:frames]
+
     # final wave
+    wave = wave.copy()
     wave *= direction
     
-    steps_generated = steps_per_second * (frames / sr)
+    steps_generated = current_freq * steps_per_cycle * (frames / sr)
    
     # stop condition
     with motion_lock:
@@ -79,13 +90,10 @@ def audio_callback(outdata, frames, time_info, status):
             motion["active"] = False
             motion["currentSteps"] = motion["targetSteps"]
 
-    outdata[:] = 0.0
-    if current_axis.lower() == "x":
-        outdata[:, 0] = wave.astype(np.float32)   # left channel
-    else:
-        outdata[:, 1] = wave.astype(np.float32)   # right channel
+    outdata[:, 0] = wave.astype(np.float32) # +V
+    outdata[:, 1] = -wave.astype(np.float32) # -V
 
-    phase = (phase + frames) % sr
+    phase = int((phase + frames) % sr) 
 
 def audio_stream_start():
     print("Audio stream attempt")

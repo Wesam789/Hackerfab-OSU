@@ -6,7 +6,7 @@ import time
 sd.default.device = 0
 
 sr = 48000        # sample rate 
-freq = 40         # wave frequency 
+freq = 200         # wave frequency 
 amplitude = 0.9
 phase = 0.0
 

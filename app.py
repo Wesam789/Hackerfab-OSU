@@ -14,29 +14,23 @@ sock = Sock(app)
 clients = set()
 clients_lock = threading.Lock()
 audio_stream = None
+camera_active = False
 
-
-
-# --- NEW GPIO LOGIC ---
-def gpio_heartbeat():
-    print("[GPIO] Pins 26 and 16 initialized")
+# GPIO pins
+def init_gpio():
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
+
+    # setup pins with confirmation message
     GPIO.setup(26, GPIO.OUT)
     GPIO.setup(16, GPIO.OUT)
+    print("GPIO Pins 26 and 16 initialized")
     
-    try:
-        while True:
-            # Keep 26 HIGH always
-            GPIO.output(26, GPIO.HIGH)
-            
-            # Blink 16 or keep it HIGH (matching your logic)
-            GPIO.output(16, GPIO.HIGH)
-            time.sleep(1)
-            GPIO.output(16, GPIO.LOW)
-            time.sleep(1)
-    except Exception as e:
-        print(f"[GPIO] Error: {e}")
+    # Pin 26 set to high
+    GPIO.output(26, GPIO.HIGH)
+    
+    # Pin 16 default to 0 (Y-axis is 1, X-axis is 0)
+    GPIO.output(16, GPIO.LOW)
 
 # broadcasts data to clients
 def ws_broadcast(obj):
@@ -77,23 +71,30 @@ def ws(ws):
 flir_cam = None
 
 def stream_frames():
+    # ADD "camera_active"
     global flir_cam
     if flir_cam is None:
         try:
             flir_cam = FLIRCamera()
-            flir_cam.start() # Ensure it starts
+            flir_cam.start()
         except Exception as e:
             print(f"Camera Init Failed: {e}")
             return
 
     while True:
-        # get_frame now returns the actual JPEG byte string
+        # if not camera_active:
+        #     time.sleep(0.1)  # sleep when not viewing
+        #     continue
+
+        # get_frame returns actual JPEG byte string
         frame = flir_cam.get_frame()
         if frame:
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            time.sleep(0.03)
         else:
             time.sleep(0.01)
+        
 
 # serve html page
 @app.get("/")
@@ -118,6 +119,14 @@ def apply_step():
 
     if not isinstance(dist, (int, float)):
         return jsonify(ok=False, error="Invalid distance")
+    
+    # output for MUX 
+    if axis == 'x':
+        GPIO.output(16, GPIO.LOW)   # 0 for X-axis
+        print("MUX: Pin 16 LOW (x-axis)")
+    elif axis == 'y':
+        GPIO.output(16, GPIO.HIGH)  # 1 for Y-axis
+        print("MUX: Pin 16 HIGH (y-axis)")
     
     with motion_lock:
         motion_queue.append({
@@ -163,6 +172,15 @@ def video_feed():
     return Response(stream_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
+# decides whether camera toggle is on or not
+# @app.post("/toggle-cam")
+# def toggle_cam():
+#     global camera_active
+#     data = request.get_json() or {}
+#     camera_active = data.get("active", False)
+#     print(f"Camera state: {camera_active}")
+#     return jsonify(ok=True)
+
 # read keypad inputs and send to browsers
 def keypad_thread():
     print("[Keypad] thread started")
@@ -180,6 +198,8 @@ def keypad_thread():
 
 def status_thread():
     print("Thread started")
+    last_payload = None
+
     while True:
         time.sleep(0.1)
         
@@ -193,7 +213,9 @@ def status_thread():
             }
         
         # Send to frontend
-        ws_broadcast(payload)
+        if payload != last_payload:
+            ws_broadcast(payload)
+            last_payload = payload
 
 # cleanup after server dies
 def cleanup():
@@ -210,7 +232,7 @@ if __name__ == "__main__":
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         threading.Thread(target=keypad_thread, daemon=True).start()
         threading.Thread(target=status_thread, daemon=True).start()
-        threading.Thread(target=gpio_heartbeat, daemon=True).start()
+        init_gpio()
         audio_stream = audio_stream_start()
 
         

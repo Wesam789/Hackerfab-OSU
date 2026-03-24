@@ -24,6 +24,13 @@ body {
   text-align: center;
 }
 
+.video-container img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  overflow-anchor: none;
+}
+
 h1, h2, h3 {
   margin: 0 0 12px;
   font-weight: 700;
