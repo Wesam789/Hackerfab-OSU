@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request, send_from_directory, Response
 from flask_sock import Sock
-import threading, json, time, os, atexit
+import threading, json, time, os, atexit, csv
 from keypad import KeypadReader
 from motion import motion, motion_lock, motion_queue
 from wave import audio_stream_start, audio_stream_stop
@@ -15,6 +15,24 @@ clients = set()
 clients_lock = threading.Lock()
 audio_stream = None
 camera_active = False
+
+# FPS testing
+fps_data = []
+test_duration = 60.0
+test_completed = False 
+
+# open file and write CSV data
+def save_fps_data():
+    # saves FPS data to CSV file
+    file_path = 'fps_data.csv'
+    try:
+        with open(file_path, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["Elapsed Time (s)", "FPS"])
+            writer.writerows(fps_data)
+        print(f"\nTEST COMPLETE: CSV file generated at: {os.path.abspath(file_path)} ***\n")
+    except Exception as e:
+        print(f"Failed to write CSV: {e}")
 
 # GPIO pins
 def init_gpio():
@@ -72,7 +90,7 @@ flir_cam = None
 
 def stream_frames():
     # ADD "camera_active"
-    global flir_cam
+    global flir_cam, test_completed
     if flir_cam is None:
         try:
             flir_cam = FLIRCamera()
@@ -80,15 +98,32 @@ def stream_frames():
         except Exception as e:
             print(f"Camera Init Failed: {e}")
             return
+    
+    last_frame_time = time.time()
+    test_start_time = time.time()
 
     while True:
-        # if not camera_active:
-        #     time.sleep(0.1)  # sleep when not viewing
-        #     continue
-
-        # get_frame returns actual JPEG byte string
         frame = flir_cam.get_frame()
+        current_time = time.time()
+
         if frame:
+            # calculate FPS
+            time_diff = current_time - last_frame_time
+            instant_fps = 1.0 / time_diff if time_diff > 0 else 0.0
+            last_frame_time = current_time
+            
+            # print to terminal
+            print(f"FPS: {instant_fps:.2f}")
+
+            # collection Window
+            total_elapsed = current_time - test_start_time
+            if total_elapsed <= test_duration and not test_completed:
+                # capture 1800-3600 points 
+                fps_data.append([round(total_elapsed, 4), round(instant_fps, 2)])
+            elif total_elapsed > test_duration and not test_completed:
+                save_fps_data()
+                test_completed = True
+
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
             time.sleep(0.03)

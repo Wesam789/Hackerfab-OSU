@@ -53,9 +53,10 @@ def audio_callback(outdata, frames, time_info, status):
         phase = (phase + frames) % sr
         return
 
+    # set freq for each axis
     if current_axis == "x":
         wave_full = wave_x
-        current_freq = 200
+        current_freq = 100
     elif current_axis == "y":
         wave_full = wave_y
         current_freq = 40
