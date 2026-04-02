@@ -3,11 +3,12 @@ from scipy import signal
 import sounddevice as sd
 import time
 from motion import motion, motion_lock, motion_queue
+import RPi.GPIO as GPIO
 
 sd.default.device = 0
 
 sr = 48000        # sample rate 
-freq = 200        # wave frequency 
+freq = 64       # wave frequency 
 amplitude = 0.9
 phase = 0
 
@@ -15,8 +16,10 @@ steps_per_cycle = 1
 
 t = np.arange(sr) / sr
 
-wave_x = amplitude * signal.sawtooth(2 * np.pi * 200 * t).astype(np.float32)
-wave_y = amplitude * signal.sawtooth(2 * np.pi * 40 * t).astype(np.float32)
+wave_x = amplitude * signal.sawtooth(2 * np.pi * 64 * t).astype(np.float32)
+wave_y = amplitude * signal.sawtooth(2 * np.pi * 64 * t).astype(np.float32)
+
+last_axis = None
 
 def load_next_step():
     # load next step from queue into active motion state
@@ -37,6 +40,8 @@ def load_next_step():
 
 def audio_callback(outdata, frames, time_info, status):
     global phase
+    global current_axis
+    global last_axis
 
     load_next_step()
 
@@ -48,7 +53,23 @@ def audio_callback(outdata, frames, time_info, status):
         target = motion["targetSteps"]
         current = motion["currentSteps"]
 
+    global last_axis
+
+    if active and current_axis != last_axis:
+        if current_axis == 'x':
+            GPIO.output(5, GPIO.HIGH)
+            GPIO.output(6, GPIO.LOW)
+        elif current_axis == 'y':
+            GPIO.output(6, GPIO.HIGH)
+            GPIO.output(5, GPIO.LOW)
+        last_axis = current_axis
+
     if not active:
+        # keep x and y off
+        GPIO.output(5, GPIO.LOW)
+        GPIO.output(6, GPIO.LOW)
+        last_axis = None
+
         outdata[:] = 0
         phase = (phase + frames) % sr
         return
@@ -56,10 +77,10 @@ def audio_callback(outdata, frames, time_info, status):
     # set freq for each axis
     if current_axis == "x":
         wave_full = wave_x
-        current_freq = 100
+        current_freq = 64
     elif current_axis == "y":
         wave_full = wave_y
-        current_freq = 40
+        current_freq = 64
 
     end_phase = phase + frames
     if end_phase <= sr:
@@ -90,6 +111,7 @@ def audio_callback(outdata, frames, time_info, status):
         if motion["currentSteps"] >= motion["targetSteps"]:
             motion["active"] = False
             motion["currentSteps"] = motion["targetSteps"]
+            last_axis = None
 
     outdata[:, 0] = wave.astype(np.float32) # +V
     outdata[:, 1] = -wave.astype(np.float32) # -V
@@ -107,6 +129,9 @@ def audio_stream_start():
             blocksize=256,
             callback=audio_callback
         )
+        time.sleep(0.005)
+        GPIO.output(26, GPIO.HIGH)
+
         stream.start()
         print("Audio stream started")
         return stream
@@ -116,6 +141,8 @@ def audio_stream_start():
         return None
 
 def audio_stream_stop(stream):
+    GPIO.output(26, GPIO.LOW)
+
     print("Stopping audio")
     if stream:
         stream.stop()

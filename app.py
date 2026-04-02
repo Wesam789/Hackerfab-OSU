@@ -16,23 +16,24 @@ clients_lock = threading.Lock()
 audio_stream = None
 camera_active = False
 
-# FPS testing
-fps_data = []
-test_duration = 60.0
-test_completed = False 
+# # FPS testing
+# fps_data = []
+# test_duration = 60.0
+# test_completed = False 
 
-# open file and write CSV data
-def save_fps_data():
-    # saves FPS data to CSV file
-    file_path = 'fps_data.csv'
-    try:
-        with open(file_path, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(["Elapsed Time (s)", "FPS"])
-            writer.writerows(fps_data)
-        print(f"\nTEST COMPLETE: CSV file generated at: {os.path.abspath(file_path)} ***\n")
-    except Exception as e:
-        print(f"Failed to write CSV: {e}")
+
+# # open file and write CSV data
+# def save_fps_data():
+#     # saves FPS data to CSV file
+#     file_path = 'fps_data.csv'
+#     try:
+#         with open(file_path, 'w', newline='') as csvfile:
+#             writer = csv.writer(csvfile)
+#             writer.writerow(["Elapsed Time (s)", "FPS"])
+#             writer.writerows(fps_data)
+#         print(f"\nTEST COMPLETE: CSV file generated at: {os.path.abspath(file_path)} ***\n")
+#     except Exception as e:
+#          print(f"Failed to write CSV: {e}")
 
 # GPIO pins
 def init_gpio():
@@ -42,10 +43,18 @@ def init_gpio():
     # setup pins with confirmation message
     GPIO.setup(26, GPIO.OUT)
     GPIO.setup(16, GPIO.OUT)
-    print("GPIO Pins 26 and 16 initialized")
+
+    # x enable
+    GPIO.setup(5, GPIO.OUT)
+
+    # y enable
+    GPIO.setup(6, GPIO.OUT)
+    print("GPIO Pins 26,16,5,6 initialized")
     
-    # Pin 26 set to high
-    GPIO.output(26, GPIO.HIGH)
+    # Pins 26,5,6 set to low
+    GPIO.output(26, GPIO.LOW)
+    GPIO.output(5, GPIO.LOW)
+    GPIO.output(6, GPIO.LOW)
     
     # Pin 16 default to 0 (Y-axis is 1, X-axis is 0)
     GPIO.output(16, GPIO.LOW)
@@ -89,8 +98,12 @@ def ws(ws):
 flir_cam = None
 
 def stream_frames():
-    # ADD "camera_active"
-    global flir_cam, test_completed
+    global flir_cam, camera_active
+    # global fps_data, test_completed
+
+    # test_completed = False
+    # fps_data = []
+
     if flir_cam is None:
         try:
             flir_cam = FLIRCamera()
@@ -99,34 +112,36 @@ def stream_frames():
             print(f"Camera Init Failed: {e}")
             return
     
-    last_frame_time = time.time()
-    test_start_time = time.time()
+    # last_frame_time = time.time()
+    # test_start_time = time.time()
 
     while True:
+        # current_time = time.time()
+
+        # # Calculate FPS based on loop speed
+        # time_diff = current_time - last_frame_time
+        # instant_fps = 1.0 / time_diff if time_diff > 0 else 0.0
+        # last_frame_time = current_time
+
+        # print(f"Current FPS: {instant_fps:.2f}") 
+
+        # total_elapsed = current_time - test_start_time
+        # if total_elapsed <= test_duration and not test_completed:
+        #     fps_data.append([round(total_elapsed, 4), round(instant_fps, 2)])
+        # elif total_elapsed > test_duration and not test_completed:
+        #     save_fps_data()
+        #     test_completed = True
+
+        # if not camera_active:
+        #     # Sleep for ~33 milliseconds to simulate a 30 FPS idle speed.
+        #     time.sleep(0.016) 
+        #     continue
+        
         frame = flir_cam.get_frame()
-        current_time = time.time()
 
         if frame:
-            # calculate FPS
-            time_diff = current_time - last_frame_time
-            instant_fps = 1.0 / time_diff if time_diff > 0 else 0.0
-            last_frame_time = current_time
-            
-            # print to terminal
-            print(f"FPS: {instant_fps:.2f}")
-
-            # collection Window
-            total_elapsed = current_time - test_start_time
-            if total_elapsed <= test_duration and not test_completed:
-                # capture 1800-3600 points 
-                fps_data.append([round(total_elapsed, 4), round(instant_fps, 2)])
-            elif total_elapsed > test_duration and not test_completed:
-                save_fps_data()
-                test_completed = True
-
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            time.sleep(0.03)
         else:
             time.sleep(0.01)
         
@@ -165,7 +180,7 @@ def apply_step():
     
     with motion_lock:
         motion_queue.append({
-            "steps": abs(dist) * 200,  # scaled up
+            "steps": abs(dist) * 64,  # scaled up
             "direction": 1 if dirSign > 0 else -1,
             "axis": axis
         })
@@ -208,16 +223,17 @@ def video_feed():
 
 
 # decides whether camera toggle is on or not
-# @app.post("/toggle-cam")
-# def toggle_cam():
-#     global camera_active
-#     data = request.get_json() or {}
-#     camera_active = data.get("active", False)
-#     print(f"Camera state: {camera_active}")
-#     return jsonify(ok=True)
+@app.post("/toggle-cam")
+def toggle_cam():
+    global camera_active
+    data = request.get_json() or {}
+    camera_active = data.get("active", False)
+    print(f"Camera state: {camera_active}")
+    return jsonify(ok=True)
 
 # read keypad inputs and send to browsers
 def keypad_thread():
+    global camera_active
     print("[Keypad] thread started")
     try:
         kp = KeypadReader()
@@ -229,6 +245,21 @@ def keypad_thread():
     # incoming events from keypad
     for evt in kp.events():
         print("[Keypad] event:", evt) 
+        
+        # camera toggle
+        # Get the key and state from your keypad event
+        key = evt.get("key")    
+        state = evt.get("state") 
+
+        # if key == "*":
+        #     # If the button is pressed down, activate the camera
+        #     if state in ("down", "pressed", 1): 
+        #         camera_active = True
+        #         print(">>> Camera feed UNLOCKED")
+        #     # If the button is let go, pause the camera
+        #     elif state in ("up", "released", 0):
+        #         camera_active = False
+        #         print(">>> Camera feed LOCKED")
         ws_broadcast({"type": "key", **evt})
 
 def status_thread():
