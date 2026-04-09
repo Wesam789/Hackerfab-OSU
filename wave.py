@@ -8,16 +8,16 @@ import RPi.GPIO as GPIO
 sd.default.device = 0
 
 sr = 48000        # sample rate 
-freq = 64       # wave frequency 
-amplitude = 0.9
+freq = 80         # wave frequency 
+amplitude = 0.275
 phase = 0
 
 steps_per_cycle = 1
 
 t = np.arange(sr) / sr
 
-wave_x = amplitude * signal.sawtooth(2 * np.pi * 64 * t).astype(np.float32)
-wave_y = amplitude * signal.sawtooth(2 * np.pi * 64 * t).astype(np.float32)
+wave_x = amplitude * signal.sawtooth(2 * np.pi * freq * t).astype(np.float32)
+wave_y = amplitude * signal.sawtooth(2 * np.pi * freq * t).astype(np.float32)
 
 last_axis = None
 
@@ -77,10 +77,10 @@ def audio_callback(outdata, frames, time_info, status):
     # set freq for each axis
     if current_axis == "x":
         wave_full = wave_x
-        current_freq = 64
+        current_freq = freq
     elif current_axis == "y":
         wave_full = wave_y
-        current_freq = 64
+        current_freq = freq
 
     end_phase = phase + frames
     if end_phase <= sr:

@@ -16,7 +16,7 @@ const navList = [
   document.getElementById('singleDistance'),
   document.getElementById('queueBtn'),
   document.getElementById('step'),
-  document.getElementById('applyStep'),
+  // document.getElementById('applyStep'),
   document.getElementById('start'),
   document.getElementById('stop')
 ];
@@ -130,8 +130,11 @@ function connectWS() {
       }
 
       // Handle keypad tokens
-      if (m.type === 'key' && m.token) {
-        handleKeyToken(m.token, m.pressed);
+      if (m.type === 'key' && (m.token || m.key)) {
+        const token = m.token || m.key;
+        const pressed = m.pressed !== undefined ? m.pressed : m.state;
+
+        handleKeyToken(token, pressed);
         return;
       }
 
@@ -163,7 +166,17 @@ async function postJSON(url, body){
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(body || {})
     });
-    return await res.json();
+
+    const text = await res.text();
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      append(`Server returned HTML (likely error)`);
+      console.error(text);
+      return {ok:false, error:"Invalid JSON response"};
+    }
+
   } catch (e) {
     append(`ERR: ${e.message || e}`);
     return {ok:false, error:String(e)};
@@ -192,16 +205,16 @@ document.getElementById('queueBtn').addEventListener('click', async () => {
 
 });
 
-// apply step for continuous mode
-document.getElementById('applyStep').addEventListener('click', () => {
-  const v = +(stepInput.value || 0);
-  if (!Number.isFinite(v) || v <= 0) {
-    append('Step must be > 0');
-    return;
-  }
-  contBadge.textContent = String(v);
-  append(`Jog step set: ${v}`);
-});
+// // apply step for continuous mode
+// document.getElementById('applyStep').addEventListener('click', () => {
+//   const v = +(stepInput.value || 0);
+//   if (!Number.isFinite(v) || v <= 0) {
+//     append('Step must be > 0');
+//     return;
+//   }
+//   contBadge.textContent = String(v);
+//   append(`Jog step set: ${v}`);
+// });
 
 function handleKeyToken(token, pressed) {
   const isDown = (pressed === true || String(pressed).toLowerCase() === "true" || pressed === 1);
@@ -278,6 +291,7 @@ function handleKeyToken(token, pressed) {
 
 // block browser from moving tabs
 window.addEventListener('keydown', function(e) {
+  if (!navMode) return;
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
     e.preventDefault();
   }

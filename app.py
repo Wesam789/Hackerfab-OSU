@@ -132,10 +132,10 @@ def stream_frames():
         #     save_fps_data()
         #     test_completed = True
 
-        # if not camera_active:
-        #     # Sleep for ~33 milliseconds to simulate a 30 FPS idle speed.
-        #     time.sleep(0.016) 
-        #     continue
+        if not camera_active:
+            # Sleep for ~33 milliseconds to simulate a 30 FPS idle speed.
+            time.sleep(0.016) 
+            continue
         
         frame = flir_cam.get_frame()
 
@@ -180,7 +180,7 @@ def apply_step():
     
     with motion_lock:
         motion_queue.append({
-            "steps": abs(dist) * 64,  # scaled up
+            "steps": abs(dist) * 100,  # scaled up
             "direction": 1 if dirSign > 0 else -1,
             "axis": axis
         })
@@ -294,8 +294,9 @@ atexit.register(cleanup)
 
 if __name__ == "__main__":
     import os
-    # keypad listener running in background
+
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        # keypad listener running in background
         threading.Thread(target=keypad_thread, daemon=True).start()
         threading.Thread(target=status_thread, daemon=True).start()
         init_gpio()
