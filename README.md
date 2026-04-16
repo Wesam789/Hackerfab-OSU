@@ -8,10 +8,12 @@ This project automates the motion of a photolithography stage to achieve micron-
 2. Install required dependencies:
   ```bash
   pip install -r requirements.txt
+  ```
   
 3. Run the backend server:
   ```bash
   python app.py
+  ```
   
 4.Open a browser and go to:
 
