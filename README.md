@@ -17,6 +17,6 @@ This project automates the motion of a photolithography stage to achieve micron-
   
 4. Open a browser and go to:
 
-  http://localhost:5000
+   http://localhost:5000
   
 5. Use the GUI to control and monitor the system.
