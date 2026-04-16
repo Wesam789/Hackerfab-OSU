@@ -15,7 +15,7 @@ This project automates the motion of a photolithography stage to achieve micron-
   python app.py
   ```
   
-4.Open a browser and go to:
+4. Open a browser and go to:
 
   http://localhost:5000
   
